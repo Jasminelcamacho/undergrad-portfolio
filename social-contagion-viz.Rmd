@@ -1,0 +1,60 @@
+---
+title: "Data Visualization - contagion.nlogo"
+date: "2024-4-4"
+---
+
+This code chunk just loads a couple packages we'll need going forward.
+```{r}
+suppressPackageStartupMessages(library(tidyverse))
+suppressPackageStartupMessages(library(data.table))
+```
+
+This code chunk defines two functions that we'll use below.
+```{r}
+read_behaviorspace_table <- function(filename) { 
+  # This function turns BehaviorSpace tables into dataframes
+  fread(filename,                  # Read in the dataframe
+        skip = 6                   # Skip the first 6 lines
+        ) %>%      
+    rename(                        # Rename some columns
+      run_number = `[run number]`, # Rename the [run number] column to run_number
+      tick = `[step]`              # Rename the [step] column to tick
+    ) %>% 
+    arrange(run_number,tick) %>%   # Order the dataframe by run_number and tick
+    relocate(run_number,tick)      # Move run_number and tick to the first columns
+  }
+get_endpoints <- function(df) {
+  # This function extracts the last ticks from each run in a dataframe
+  df %>%                           # Take a dataframe
+    group_by(run_number) %>%       # Group it by run_number
+    filter(tick == max(tick)) %>%  # Remove all the rows besides the last tick
+    ungroup                        # Remove the grouping
+}
+```
+
+
+```{r}
+filename <- 'all_runsnew1-table.csv' # Create a filename variable
+df <- read_behaviorspace_table(filename)            # Read in your data
+
+df.ep <- get_endpoints(df) # Create a new dataframe with only the last tick
+df.ep                      # Print the new dataframe so we can look at it
+```
+
+
+```{r}
+ggplot(                           # create a new plot
+  data = df,                   # based on the data stored in df.ep
+  mapping = aes(                  # with the following variable-aesthetic mappings:
+    x = `tick`,   # threshold on the x-axis                 
+    y = `prop-infected`,
+    #group = run_number,
+    color = as.factor(`recovery-rate`)    )
+  ) +
+  stat_summary(geom="line",alpha=.3)+
+  #geom_line(aes(group = run_number))+
+  scale_x_continuous('Time') +        # Adjust x-axis label
+  scale_y_continuous('Prop Infected')+   # Adjust y-axis label
+  scale_color_discrete('Recovery Rate')                     # Adjust color label
+```
+
